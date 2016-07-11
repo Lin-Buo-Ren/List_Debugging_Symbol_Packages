@@ -74,6 +74,7 @@ fi
 find-debug() {
     while read i; do
         for ext in $preferred; do
+            i=$(echo "$i"|cut -f 1 -d:) #remove the architecture suffix
             apt-cache search "^$i-$ext\$"
         done |head -1
     done
