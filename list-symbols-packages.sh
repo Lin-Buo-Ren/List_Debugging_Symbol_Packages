@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 # Michele Bini, the author of this script, disclaims copyright to it
 # thus placing it in the public domain.
 
@@ -41,26 +41,26 @@ terse=false
 pid=
 while getopts :adgp:t opt; do
     case $opt in
-	a)
-	    all=true
-	    ;;
-	d)
-	    preferred="dbg dbgsym"
-	    ;;
-	g)
-	    debug=true
-	    ;;
-	p)
-	    pid="$OPTARG"
+        a)
+            all=true
+            ;;
+        d)
+            preferred="dbg dbgsym"
+            ;;
+        g)
+            debug=true
+            ;;
+        p)
+            pid="$OPTARG"
             binary=$(readlink /proc/$pid/exe)
             [ -z "$binary" ] && echo "Unable to get binary path for pid $pid" && exit -1
-	    ;;
-	t)
-	    terse=true
-	    ;;
-	\?)
-	    explain
-	    ;;
+            ;;
+        t)
+            terse=true
+            ;;
+        \?)
+            explain
+            ;;
     esac
 done
 
@@ -73,19 +73,26 @@ fi
 
 find-debug() {
     while read i; do
-	for ext in $preferred; do
-	    apt-cache search "^$i-$ext\$"
-	done |head -1
+        for ext in $preferred; do
+            apt-cache search "^$i-$ext\$"
+        done |head -1
     done
 }
 
-echo q| gdb "$binary" $pid |
-grep 'Reading symbols from '|
-if $all; then cat; else grep 'no debugging symbols found'; fi |
-sed -e 's/^Reading symbols from \(.*\)\.\.\.\((\|Reading \).*$/\1/' |
-while read i; do
+if [ ! -z "$pid" ]; then
+   Args="--pid=$pid"
+else
+   Args="$binary"
+fi
+
+echo q| gdb "$Args" | \
+grep 'Reading symbols from '| \
+if $all; then cat; else grep 'no debugging symbols found'; fi | \
+sed -e 's/^Reading symbols from \(.*\)\.\.\.\((\|Reading \).*$/\1/' | \
+while read i; do \
     #dpkg -S "$i" |while read j; do if $debug; then echo '!' $i '-->' $j 1>&2; fi; echo $j; done
-    ( if ! dpkg -S "$i" 2>/dev/null; then [ -L "$i" ] && dpkg -S `readlink "$i"`; fi ) |
-    while read j; do if $debug; then echo '!' $i '-->' $j 1>&2; fi; echo $j; done
-done| sed -e 's/^\(.*\): .*$/\1/' | sort -u |
+    ( if ! dpkg -S "$i" 2>/dev/null; then [ -L "$i" ] && dpkg -S `readlink "$i"`; fi ) | \
+    while read j; do if $debug; then echo '!' $i '-->' $j 1>&2; fi; echo $j; done \
+done| sed -e 's/^\(.*\): .*$/\1/' | sort -u | \
 find-debug | if $terse; then sed -e 's/ - .*$//'; else cat; fi |sort -u
+
